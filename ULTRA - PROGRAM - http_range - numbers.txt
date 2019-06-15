@@ -1,0 +1,177 @@
+numbers.txt - demonstration file
+01234567890123456789
+
+
+
+
+Here’s how it behaves, making requests from the command-line curl program to the built-in PHP webserver
+
+The entire file, without any Range header:
+$ curl -v http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+>
+[Sun Aug 18 14:33:36 2013] ::1:59812 [200]: /range.php
+< HTTP/1.1 200 OK
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Type: text/plain
+< Content-Length: 10
+<
+* Closing connection #0
+0123456789
+
+
+
+Only the first 5 bytes:
+$ curl -v -H 'Range: bytes=0-4' http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+> Range: bytes=0-4
+>
+[Sun Aug 18 14:30:52 2013] ::1:59798 [206]: /range.php
+< HTTP/1.1 206 Partial Content
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Range: bytes 0-4/10
+< Content-Type: text/plain
+< Content-Length: 5
+<
+* Closing connection #0
+01234
+
+
+See how the status code is now 206 instead of 200, and there is a Content-Range HTTP
+header telling you what bytes were returned
+
+Or the last 5 bytes:
+$ curl -v -H 'Range: bytes=-5' http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+> Range: bytes=-5
+>
+[Sun Aug 18 14:30:33 2013] ::1:59796 [206]: /range.php
+< HTTP/1.1 206 Partial Content
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Range: bytes 5-9/10
+< Content-Type: text/plain
+< Content-Length: 5
+<
+* Closing connection #0
+56789
+
+
+
+The first 5 and the last 5 bytes:
+$ curl -v -H 'Range: bytes=0-4,-5' http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+> Range: bytes=0-4,-5
+>
+[Sun Aug 18 14:30:12 2013] ::1:59794 [206]: /range.php
+< HTTP/1.1 206 Partial Content
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Type: multipart/byteranges; boundary=ALLIeNOkvwgKk0ib91ZNph5qi8fHo2ai
+< Content-Length: 236
+<
+--ALLIeNOkvwgKk0ib91ZNph5qi8fHo2ai
+Content-Type: text/plain
+Content-Range: bytes 0-4/10
+01234
+--ALLIeNOkvwgKk0ib91ZNph5qi8fHo2ai
+Content-Type: text/plain
+Content-Range: bytes 5-9/10
+56789
+* Closing connection #0
+--ALLIeNOkvwgKk0ib91ZNph5qi8fHo2ai--
+
+
+The Content-Type is switched from text/plain to multipart/byteranges; bound
+ary=ALLIeNOkvwgKk0ib91ZNph5qi8fHo2ai. The “real” Content headers have moved
+within each section
+
+Because this is the entire file, it’s also valid to serve it up as if you requested this without
+any Range header
+
+An invalid request, because bytes 20–24 do not exist:
+$ curl -v -H 'Range: bytes=20-24' http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+> Range: bytes=20-24
+>
+[Sun Aug 18 14:32:17 2013] Client requested no valid ranges.
+[Sun Aug 18 14:32:17 2013] ::1:59806 [416]: /range.php
+< HTTP/1.1 416 Requested Range Not Satisfiable
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Range: bytes */10
+< Content-type: text/html
+<
+* Closing connection #0
+
+This returns a third status code, 416, along with a helpful header to let us know the legal
+set of values to request: Content-Range: bytes */10.
+
+Finally, a legal and illegal value:
+$ curl -v -H 'Range: bytes=0-4,20-24' http://localhost:8000/range.php
+* About to connect() to localhost port 8000 (#0)
+* Trying ::1...
+* connected
+* Connected to localhost (::1) port 8000 (#0)
+> GET /range.php HTTP/1.1
+> User-Agent: curl/7.24.0
+> Host: localhost:8000
+> Accept: */*
+> Range: bytes=0-4,20-24
+>
+[Sun Aug 18 14:31:27 2013] ::1:59801 [206]: /range.php
+< HTTP/1.1 206 Partial Content
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/5.4.9
+< Content-Range: bytes 0-4/10
+< Content-Type: text/plain
+< Content-Length: 5
+<
+* Closing connection #0
+01234
+
+Because there’s at least one valid range, the illegal ones are ignored and the response is
+the same as only asking for the first 5 bytes
