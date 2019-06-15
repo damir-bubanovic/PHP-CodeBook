@@ -1,0 +1,13 @@
+<?php/*PHP script*//*User input variables - check against security measures*//*htmlspecialchars - Convert special characters to HTML entities - encoding*//*strip_tags - strip HTML & PHP tags*//*ENT_QUOTES - '' or "" - look it up*/$name = htmlspecialchars( strip_tags( trim($_POST['name']) ), ENT_QUOTES, 'UTF-8' );$email = filter_var( $_POST["email"], FILTER_VALIDATE_EMAIL);$message = htmlspecialchars( strip_tags( trim($_POST['message']) ), ENT_QUOTES, 'UTF-8' );/*if submit button is pressed*/if(isset($_POST['contact_form_submit'])) {	/*if name input field is empty*/	if(empty($name)) {		$error_name = true;		$_POST['contact_form_submit'] = 0;	}	/*if email input field is empty*/	if(empty($email) || !$email) {		$error_email = true;		$_POST['contact_form_submit'] = 0;	}		if( $_POST['contact_form_submit'] == 1 ) {			/*email message is constructed*/		$to = "info@jezicniatelier.com";		$headers .= "MIME-Version: 1.0\r\n";		$headers .= "Content-Type: text/html; charset=UTF-8\r\n";		$headers .= "From: Jezicni Atelier <info@jezicniatelier.com>\r\n" ;		/*\r\n = Used as a new line character in Windows*/		$headers .= "Reply-To: ".$email."\r\n";		$mail_body = 	"<html><body><table>".							"<tr><td>Ime:&nbsp;</td><td>".$name."</td></tr>".							'<tr><td>E-mail:&nbsp;</td><td><a href="mailto:'.$email.'">'.$email.'</a></td></tr>'.							/*nl2br — Inserts HTML line breaks before all newlines in a string*/							'<tr><td>Poruka:&nbsp;</td><td>'.nl2br($message)."</td></tr>".							"</table></body></html>";		if (mail( $to, "Contact Form", $mail_body, $headers)) {			$systemMessage = '<div class="sucess"><strong>Vaša poruka je uspješno poslana.</strong></div>';			header('Location: '.URL_ROOT.'/hvala');		} else {			$systemMessage = '<div class="error">Došlo je do pogreške, pokušajte ponovo.</div>';		};	}}?><!--HTML form--><form method="post" action="" accept-charset="utf-8">
+	<br />
+	<h2>Pitajte nas sve što vas zanima!</h2>
+	<br />
+	<label>ime:</label>
+	<input type="text" <?php if($error_name) print 'class="error"'; ?>name="name" value="<?php print $name; ?>"/><span class="req">&#42;</span><br />
+	<label>e-mail:</label>
+	<input type="text" <?php if($error_email) print 'class="error"'; ?> name="email" value="<?php print $email; ?>"/><span class="req">&#42;</span><br />
+	<label>poruka:</label>
+	<textarea cols="1" rows="8" name="message"><?php print $message; ?></textarea><br />
+	<button type="submit" name="contact_form_submit" value="1" title="Pošalji">POŠALJI</button>
+	<?php	if( $_POST['contact_form_submit'] == 1 ) echo '<div class="systemMessage">'.$systemMessage.'</div>'; ?>
+</form>
